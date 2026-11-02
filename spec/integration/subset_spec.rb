@@ -138,6 +138,24 @@ describe 'subsetting' do # rubocop: disable RSpec/DescribeClass
     expect(format04.code_map[0xFFFF]).to eq(0)
   end
 
+  it 'keeps .notdef at GID 0 in a CFF subset without code 0' do
+    font = TTFunk::File.open(test_font('Exo-Regular', :otf))
+    euro = 0x20AC
+
+    subset = TTFunk::Subset.for(font, :unicode_8bit)
+    subset.use(euro)
+    new_font = TTFunk::File.new(subset.encode)
+
+    original_charstrings = font.cff.top_index[0].charstrings_index
+    new_charstrings = new_font.cff.top_index[0].charstrings_index
+    old_gids = [0, font.cmap.unicode.first[space_char], font.cmap.unicode.first[euro]]
+
+    expect(new_font.cff.top_index[0].charset.to_a).to eq(%w[.notdef space Euro])
+    old_gids.each_with_index do |old_gid, new_gid|
+      expect(new_charstrings[new_gid].path.commands).to eq(original_charstrings[old_gid].path.commands)
+    end
+  end
+
   it 'sorts records in the name table correctly' do
     font = TTFunk::File.open(test_font('DejaVuSans'))
 
